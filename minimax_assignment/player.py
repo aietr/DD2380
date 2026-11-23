@@ -81,8 +81,34 @@ class PlayerControllerMinimax(PlayerController):
             return min(self.minimax(c, depth - 1) for c in children)
 
     def heuristic(self, node):
-        green, red = node.state.get_player_scores()
-        return green - red
+        state = node.state
+        green, red = state.get_player_scores()
+        value = 10 * (green - red)
+
+        hooks = state.get_hook_positions()
+        fish_pos = state.get_fish_positions()
+        fish_scores = state.get_fish_scores()
+        caught = state.get_caught()
+
+        # Fish already on a hook almost counts as points
+        if caught[0] is not None:
+            value += fish_scores[caught[0]]
+        if caught[1] is not None:
+            value -= fish_scores[caught[1]]
+
+        # Reward being close to valuable fish (x wraps around, board is 20 wide)
+        def dist(a, b):
+            dx = abs(a[0] - b[0])
+            dx = min(dx, 20 - dx)
+            return dx + abs(a[1] - b[1])
+
+        best = 0
+        for f, pos in fish_pos.items():
+            if fish_scores[f] > 0:
+                best = max(best, fish_scores[f] / (dist(hooks[0], pos) + 1))
+        value += best
+
+        return value
 
         
         
